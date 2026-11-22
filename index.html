@@ -169,6 +169,7 @@ input:focus-visible,button:focus-visible{outline:3px solid var(--acc);outline-of
 .nogl{position:absolute;inset:0;display:grid;place-items:center;color:#fff;text-align:center;padding:20px}
 @media (max-width:600px){.bubble{max-width:calc(100% - 70px)}.bubble p{font-size:14px}.topr{flex-direction:column}.hudrow{top:62px;right:66px}.leftcol{top:62px;width:calc(100% - 90px)}.leftcol.biz{top:132px}.rcard{width:172px;padding:10px}.rcard .rh small{display:none}.ings{gap:4px;margin-top:6px}.ings button{min-height:36px;font-size:11px;gap:1px;border-radius:10px}.ings button svg{width:18px;height:13px}.mts{margin-top:7px;gap:5px}.mt{grid-template-columns:36px minmax(0,1fr) 46px;font-size:11px}.taste{display:none!important}.seg button{line-height:1.15}.side{bottom:calc(max(12px,env(safe-area-inset-bottom)) + 104px);gap:8px}.peek{width:74px;height:54px}.knob{width:92px;height:92px}.knob .dial{left:19px;top:19px}.knob .arc,.knob .ticks{inset:12px}.dock{bottom:auto;top:50%;width:112px}.seg button{font-size:14px}}
 @media (prefers-reduced-motion:reduce){.bubble p,.promo.in,.xp span.in{animation:none;opacity:1;transform:none}.board li{transition:none}}
+kbd{display:inline-block;font:700 10px/1 var(--font);padding:3px 5px;border-radius:5px;background:rgba(0,0,0,.07);color:#6e6e73;margin-left:6px;vertical-align:1px}button[aria-pressed=true] kbd{background:rgba(255,255,255,.6)}@media (hover:none),(pointer:coarse){kbd{display:none}}
 </style></head><body>
 <div id="app">
   <canvas id="gl" aria-label="위에서 내려다본 고깃집 숯불 테이블"></canvas>
@@ -907,6 +908,31 @@ function render(){$('peek').style.visibility=S.phase==='cook'?'visible':'hidden'
     if(pw>0&&ph>0){cam2.aspect=pw/ph;cam2.updateProjectionMatrix();renderer.setScissorTest(true);renderer.setScissor(x,y,pw,ph);renderer.setViewport(x,y,pw,ph);renderer.render(scene,cam2);renderer.setScissorTest(false);renderer.setViewport(0,0,w,h)}}}
 let last=0;
 function loop(ts){const t=ts/1000,dt=Math.min(.05,last?t-last:0);last=t;update(dt,t);render();drawFx(dt);requestAnimationFrame(loop)}
+/* ---------- keyboard shortcuts (PC) ---------- */
+const KEYS={place:'Q',tong:'W',cut:'E',stir:'R',done:'Enter'},MEATK={sam:'1',mok:'2',cha:'3'};
+const kb=k=>`<kbd>${k}</kbd>`;
+const renderTools0=renderTools;
+renderTools=function(){renderTools0();$('seg').querySelectorAll('[data-t]').forEach(b=>{const k=KEYS[b.dataset.t];if(k)b.insertAdjacentHTML('beforeend',kb(k))});$('chips').querySelectorAll('[data-k]').forEach(b=>{const k=MEATK[b.dataset.k];if(k)b.insertAdjacentHTML('beforeend',kb(k))})};
+$('swapBtn').insertAdjacentHTML('beforeend',kb('F'));$('peek').insertAdjacentHTML('beforeend',kb('V'));
+function meatAtCursor(){const r=cvs.getBoundingClientRect();ndc.set((lastClient.x-r.left)/r.width*2-1,-(lastClient.y-r.top)/r.height*2+1);ray.setFromCamera(ndc,cam);return pick(meats)}
+addEventListener('keydown',e=>{const tg=e.target;if(tg&&(tg.tagName==='INPUT'||tg.tagName==='TEXTAREA'||tg.isContentEditable))return;if(e.ctrlKey||e.metaKey||e.altKey)return;
+  const c=e.code,cook=S.phase==='cook'&&!S.paused,click=id=>{const b=typeof id==='string'?$(id):id;if(b&&!b.disabled&&!b.closest('[hidden]'))b.click()};
+  if(c==='Escape'){e.preventDefault();if(!$('pause').hidden){click('resumeBtn');return}if(!$('rank').hidden){click('closeRank');return}if(!$('album').hidden){click('closeAlbum');return}
+    if(S.mode==='biz'&&S.phase==='cook'){S.paused=true;$('pause').hidden=false}return}
+  if(c==='KeyM'){click('muteBtn');return}
+  if(!cook)return;
+  if(document.activeElement&&document.activeElement.tagName==='BUTTON')document.activeElement.blur();
+  const tool=t=>{const b=$('seg').querySelector(`[data-t="${t}"]`);if(b&&!b.disabled){unlockAudio();b.click()}};
+  if(e.repeat&&!/^Key[AD]$/.test(c))return;
+  switch(c){
+    case 'KeyQ':tool('place');break;case 'KeyW':tool('tong');break;case 'KeyE':tool('cut');break;case 'KeyR':tool('stir');break;
+    case 'Enter':case 'NumpadEnter':if(S.mode==='tut')tool('done');else return;break;
+    case 'Digit1':case 'Digit2':case 'Digit3':case 'Numpad1':case 'Numpad2':case 'Numpad3':{unlockAudio();const k=['sam','mok','cha'][+c.slice(-1)-1];S.tool='place';setCut(k);break}
+    case 'KeyF':click('swapBtn');break;case 'KeyV':click('peek');break;
+    case 'KeyA':unlockAudio();setHeat(S.heat-(e.shiftKey?1:.3));break;case 'KeyD':unlockAudio();setHeat(S.heat+(e.shiftKey?1:.3));break;
+    case 'Space':{if(S.swap||drag)break;const m=meatAtCursor();if(m&&!m.anim&&!m.drop){unlockAudio();flip(m)}else speak('뒤집을 고기 위에 마우스를 올리고 스페이스를 눌러 줘');break}
+    default:return}
+  e.preventDefault()});
 renderTools();requestAnimationFrame(loop);
 }
 }
